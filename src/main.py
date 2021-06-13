@@ -9,8 +9,6 @@ JSON_STRING_ESCAPE_CHAR_BYTES_REGEX=re.compile(br'([\\"]|[^\x20-\x7e])')
 
 def _encode_json_str(m):
 	c=ord(m.group(0))
-	if (c<256):
-		return f"\\x{c:02x}"
 	if (c<0x10000):
 		return f"\\u{c:04x}"
 	c-=0x10000
@@ -20,8 +18,6 @@ def _encode_json_str(m):
 
 def _encode_json_str_bytes(m):
 	c=ord(m.group(0))
-	if (c<256):
-		return bytes(f"\\x{c:02x}","utf-8")
 	if (c<0x10000):
 		return bytes(f"\\u{c:04x}","utf-8")
 	c-=0x10000
