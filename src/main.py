@@ -47,10 +47,129 @@ def encode_json(e):
 
 
 
+def _decode_json_str(e):
+	i=0
+	o=""
+	while (e[i:i+1]!=b"\""):
+		if (e[i:i+1]!=b"\\"):
+			o+=chr(e[i])
+		else:
+			i+=1
+			c=e[i:i+1]
+			if (c in [b"\\'\""]):
+				o+=chr(e[i])
+			elif (c==b"b"):
+				o+="\b"
+			elif (c==b"f"):
+				o+="\f"
+			elif (c==b"n"):
+				o+="\n"
+			elif (c==b"r"):
+				o+="\r"
+			elif (c==b"t"):
+				o+="\t"
+			elif (c==b"v"):
+				o+="\v"
+			elif (c==b"x"):
+				v=0
+				i+=1
+				for _ in range(0,2):
+					v=v*16+(e[i]-48 if e[i]>47 and e[i]<58 else (e[i]-55 if e[i]>64 and e[i]<71 else e[i]-87))
+					i+=1
+				o+=chr(v)
+				continue
+			elif (c==b"u"):
+				v=0
+				i+=1
+				for _ in range(0,4):
+					v=v*16+(e[i]-48 if e[i]>47 and e[i]<58 else (e[i]-55 if e[i]>64 and e[i]<71 else e[i]-87))
+					i+=1
+				o+=chr(v)
+				continue
+			else:
+				v=0
+				while (e[i]>47 and e[i]<56):
+					v=v*8+(e[i]-48)
+					i+=1
+				o+=chr(v)
+				continue
+		i+=1
+	return (o,i)
+
+
+
 def decode_json(e):
-	raise RuntimeError("Unimplemented")
+	if (e[:1]==b"{"):
+		o={}
+		i=1
+		while (e[i:i+1]!=b"}"):
+			while (e[i-1:i]!=b"\""):
+				i+=1
+			k,j=_decode_json_str(e[i:])
+			i+=j+1
+			while (e[i-1:i]!=b":"):
+				i+=1
+			v,j=decode_json(e[i:])
+			o[k]=v
+			i+=j
+			while (e[i-1:i]!=b","):
+				if (e[i:i+1]==b"}"):
+					break
+				i+=1
+		return (o,i)
+	if (e[:1]==b"["):
+		o=[]
+		i=1
+		while (e[i:i+1]!=b"]"):
+			k,j=decode_json(e[i:])
+			i+=j
+			o.append(k)
+			while (e[i-1:i]!=b","):
+				if (e[i:i+1]==b"]"):
+					break
+				i+=1
+		return (o,i)
+	if (e[:1]==b"\"" or e[:1]==b"'"):
+		o,i=_decode_json_str(e[1:])
+		return (o,i+1)
+	if (e[:4]==b"true"):
+		return (True,4)
+	if (e[:5]==b"false"):
+		return (False,5)
+	if (e[:4]==b"null"):
+		return (None,4)
+	s=1
+	i=0
+	if (e[:1]==b"-"):
+		s=-1
+		i=1
+	o=0
+	while (e[i]>47 and e[i]<58):
+		o=o*10+(e[i]-48)
+		i+=1
+	if (e[i:i+1]==b"."):
+		pw=0.1
+		i+=1
+		while (e[i]>47 and e[i]<58):
+			o+=pw*(e[i]-48)
+			pw*=0.1
+			i+=1
+		if (e[i:i+1]==b"e"):
+			i+=1
+			pw_s=1
+			if (e[i:i+1]==b"-"):
+				pw_s=-1
+				i+=1
+			pw=0
+			while (e[i]>47 and e[i]<58):
+				pw=pw*10+(e[i]-48)
+				i+=1
+			o*=pow(10,pw*pw_s)
+	o*=s
+	return (o,i-1)
 
 
 
-dt={"key":["value",10,-842.9e200,{"a":["c",30,"d☼",b"\n\x01"]},True,False,None]}
-print(encode_json(dt),decode_json(encode_json(dt)))
+dt={"key":["value",10,-842.9e-200,{"a":["c",30,"d€",b"\n\x01"],"other":"else"},True,False,None]}
+print(encode_json(dt))
+print(decode_json(encode_json(dt))[0],decode_json(b"[\"\\00044\"]"))
